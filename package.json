@@ -1,0 +1,51 @@
+{
+  "name": "copy-watch",
+  "version": "1.0.0",
+  "description": "Watch a directory and mirror written files into a target directory. Handles atomic saves, editor temp files and macOS descriptor limits.",
+  "type": "module",
+  "main": "./src/index.js",
+  "exports": {
+    ".": "./src/index.js"
+  },
+  "bin": {
+    "copy-watch": "./bin/cli.js"
+  },
+  "files": [
+    "bin",
+    "src",
+    "examples",
+    "README.md",
+    "LICENSE"
+  ],
+  "engines": {
+    "node": ">=18.3.0"
+  },
+  "scripts": {
+    "start": "node ./bin/cli.js",
+    "smoke": "node ./test/smoke.js",
+    "test": "node ./test/smoke.js"
+  },
+  "keywords": [
+    "chokidar",
+    "watch",
+    "watcher",
+    "copy",
+    "mirror",
+    "sync",
+    "filesystem",
+    "macos"
+  ],
+  "author": "jhalitschke",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/jhalitschke/copy-watch.git"
+  },
+  "bugs": {
+    "url": "https://github.com/jhalitschke/copy-watch/issues"
+  },
+  "homepage": "https://github.com/jhalitschke/copy-watch#readme",
+  "dependencies": {
+    "chokidar": "^4.0.3"
+  }
+}

@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  copy-watch als LaunchAgent im User-Kontext.
+
+  Ablage:  ~/Library/LaunchAgents/local.copy-watch.plist
+  Laden:   launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/local.copy-watch.plist
+  Status:  launchctl print gui/$(id -u)/local.copy-watch
+  Stoppen: launchctl bootout gui/$(id -u)/local.copy-watch
+
+  ~/Library/LaunchAgents gehoert dem Benutzer — kein sudo, kein Admin noetig.
+  Pfade unten auf die eigene Installation anpassen. ProgramArguments braucht
+  absolute Pfade: launchd hat keine PATH-Umgebung wie eine Login-Shell.
+-->
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>local.copy-watch</string>
+
+    <key>ProgramArguments</key>
+    <array>
+        <string>/Users/DEINNAME/.nvm/versions/node/v22.0.0/bin/node</string>
+        <string>/Users/DEINNAME/tools/copy-watch/bin/cli.js</string>
+        <string>/Users/DEINNAME/Projects/meinprojekt/dist</string>
+        <string>/Users/DEINNAME/Sites/preview</string>
+        <string>--initial</string>
+        <string>--delete</string>
+    </array>
+
+    <key>RunAtLoad</key>
+    <true/>
+
+    <key>KeepAlive</key>
+    <dict>
+        <key>SuccessfulExit</key>
+        <false/>
+    </dict>
+
+    <!-- Descriptor-Limit anheben; launchd erbt nicht das ulimit der Shell. -->
+    <key>SoftResourceLimits</key>
+    <dict>
+        <key>NumberOfFiles</key>
+        <integer>4096</integer>
+    </dict>
+
+    <key>StandardOutPath</key>
+    <string>/Users/DEINNAME/Library/Logs/copy-watch.log</string>
+    <key>StandardErrorPath</key>
+    <string>/Users/DEINNAME/Library/Logs/copy-watch.error.log</string>
+
+    <key>ProcessType</key>
+    <string>Background</string>
+</dict>
+</plist>
