@@ -2,6 +2,8 @@
 
 [![test](https://github.com/jhalitschke/copy-watch/actions/workflows/test.yml/badge.svg)](https://github.com/jhalitschke/copy-watch/actions/workflows/test.yml)
 
+> 🇬🇧 **English version:** see [copy-watch (English)](#copy-watch-english) below.
+
 Beobachtet einen Ordner und spiegelt jede dort geschriebene Datei in ein Zielverzeichnis.
 Dünner Wrapper um [chokidar](https://github.com/paulmillr/chokidar) v4 mit den Details,
 die in der Praxis beißen: halb geschriebene Dateien, Atomic Saves, Editor-Temporärdateien,
@@ -281,5 +283,289 @@ Legt ein temporäres Verzeichnispaar an und prüft Anlegen, Ändern, verschachte
 Ignore-Muster, Umlaute in Dateinamen, Atomic Saves und Löschen.
 
 ## Lizenz
+
+MIT
+
+---
+
+# copy-watch (English)
+
+> 🇩🇪 Die deutsche Fassung steht [oben in diesem Dokument](#copy-watch).
+
+Watches a folder and mirrors every file written there into a target directory.
+A thin wrapper around [chokidar](https://github.com/paulmillr/chokidar) v4, covering the
+details that bite in practice: half-written files, atomic saves, editor temp files,
+descriptor limits.
+
+Runs without admin rights. No native dependencies, no `node-gyp`, no Xcode Command Line
+Tools — chokidar 4 dropped `fsevents` and relies on Node's built-ins only.
+
+**Requirement:** Node ≥ 18.3 (because of `util.parseArgs`).
+
+---
+
+## Installation
+
+### Without admin rights (recommended)
+
+A global install writes to `/usr/local` and wants `sudo`. Three ways around that:
+
+**As a project dependency** — the obvious option when the watcher belongs to a specific
+project:
+
+```bash
+npm install --save-dev copy-watch
+```
+
+Then in `package.json`:
+
+```json
+{
+  "scripts": {
+    "sync": "copy-watch ./dist ~/Sites/preview --initial --delete"
+  }
+}
+```
+
+`npm run sync` finds the binary via `node_modules/.bin`, without anything living globally.
+
+**Via npx, without a permanent install:**
+
+```bash
+npx copy-watch ./dist ~/Sites/preview --initial
+```
+
+**Globally, but inside your home directory** — if you need the tool across projects:
+
+```bash
+npm config set prefix ~/.npm-global
+echo 'export PATH="$HOME/.npm-global/bin:$PATH"' >> ~/.zshrc
+source ~/.zshrc
+npm install -g copy-watch
+```
+
+If Node itself lives in user space via nvm, fnm or Homebrew, `npm i -g` is already writable
+anyway and the detour is unnecessary.
+
+### Straight from the repo
+
+```bash
+git clone <repo> ~/tools/copy-watch
+cd ~/tools/copy-watch
+npm install
+node bin/cli.js --help
+```
+
+---
+
+## CLI
+
+```
+copy-watch <source> <target> [options]
+```
+
+| Option | Default | Meaning |
+| --- | --- | --- |
+| `-i`, `--initial` | off | Copy the existing contents once at startup |
+| `-d`, `--delete` | off | Delete in the target what was deleted in the source |
+| `-p`, `--poll` | off | Polling instead of kernel events (network drives, VM shares) |
+| `--interval <ms>` | 500 | Polling interval |
+| `--stability <ms>` | 300 | Wait time until a file counts as fully written |
+| `--debounce <ms>` | 50 | Coalesce multiple events per file |
+| `--delete-delay <ms>` | 400 | Grace period before deleting in the target |
+| `--retries <n>` | 5 | Retries on `EMFILE`/`ENFILE` |
+| `--ignore <regex>` | – | Additional ignore pattern, can be given multiple times |
+| `--dry-run` | off | Only print what would happen |
+| `-q`, `--quiet` | off | No per-file output |
+
+Examples:
+
+```bash
+# mirror build output into a local webroot
+copy-watch ./dist ~/Sites/preview --initial --delete
+
+# onto a mounted share where kernel events don't get through
+copy-watch ./src /Volumes/team-share/inbox --poll --interval 1000
+
+# leave source maps and build stats out
+copy-watch ./build ./deploy --ignore '\.map$' --ignore '^stats\.json$'
+
+# just see what would happen first
+copy-watch ./dist ~/Sites/preview --initial --dry-run
+```
+
+Output format: `+` newly copied, `~` updated, `-` deleted, `d` directory created,
+`x` directory removed.
+
+Quit with `Ctrl-C`; the watcher is closed cleanly.
+
+---
+
+## As a module
+
+```js
+import { createCopyWatcher } from 'copy-watch';
+
+const watcher = createCopyWatcher({
+  src: './dist',
+  dest: '/Users/jochen/Sites/preview',
+  initial: true,
+  delete: true,
+  ignore: [/\.map$/],
+  onEvent: ({ type, rel, to }) => {
+    console.log(type, rel);
+    // e.g. purge a cache, trigger a reload, kick off a deploy here
+  },
+  onError: (err) => console.error(err),
+});
+
+watcher.on('ready', () => console.log('initial scan complete'));
+
+// later on
+await watcher.close();
+```
+
+The return value is the chokidar `FSWatcher` instance, so you have access to all the
+original events (`ready`, `all`, …). `close()` is overridden and additionally clears the
+internal timers.
+
+### Options
+
+Every CLI option exists as a camelCase field: `initial`, `delete`, `poll`, `interval`,
+`stability`, `debounce`, `deleteDelay`, `retries`, `ignore` (array of RegExp or string),
+`dryRun`, plus `onEvent` and `onError`.
+
+`onEvent` receives `{ type, from, to, rel }` with `type` being one of
+`copy | update | delete | mkdir | rmdir`.
+
+---
+
+## macOS
+
+### Permissions
+
+Nothing about the tool needs admin rights. The only thing that asks for a password is the
+target itself: `/Library`, `/usr/local`, `/Applications` and everything else outside of
+`$HOME` belong to root. Inside `~` — `~/Sites`, `~/Projects`, `~/Library/…` — you can write
+freely.
+
+Two things that look like missing permissions but aren't:
+
+**Protected folders (TCC).** `~/Desktop`, `~/Documents` and `~/Downloads` sit behind
+Apple's privacy layer. On first access macOS asks once; the grant applies to the *terminal
+application*, not to the script. If you denied it by accident: System Settings → Privacy &
+Security → Files and Folders → grant access to Terminal (or iTerm). That's a user decision,
+not an admin operation. The watcher reports `EACCES`/`EPERM` with exactly that hint. The
+easiest approach is to work below an unproblematic path such as `~/Projects` or `~/Sites`.
+
+**Descriptor limit.** macOS starts shells with `ulimit -n 256`. Chokidar opens one watch
+per directory, a deep tree blows past the limit and you get `EMFILE`. The soft limit can be
+raised up to the hard limit without admin rights:
+
+```bash
+ulimit -n 4096          # applies to the current shell window
+```
+
+For a permanent change, put it in `~/.zshrc`. The hard limit (`ulimit -Hn`) is high enough
+on modern systems; only raising it *beyond* that would need root. The CLI checks this at
+startup and warns if the limit is below 1024. Alternative without any tweaking: `--poll` —
+it costs CPU, but doesn't open a flood of descriptors.
+
+### Watch mechanism
+
+Since chokidar 4 there is no `fsevents` any more, everything goes through `fs.watch`. The
+consequence: no compilation at install time, but one watch per directory instead of a
+single FSEvents stream for the whole tree — see the descriptor limit above. For folders the
+size of a build output this is inconsequential.
+
+On mounted volumes (SMB, NFS, `/Volumes/…`, VM shares, Docker bind mounts) kernel events
+often don't arrive at all. There `--poll` isn't optional, it's the only variant that works.
+
+### Atomic saves
+
+Many macOS programs don't save into the target file, they write a temp file and rename it.
+Watched naively this looks like "file deleted, another file appeared" — with `--delete` the
+target file would briefly vanish, or in the worst case stay deleted. That's why every
+deletion is delayed by `--delete-delay` and discarded as soon as the path reappears within
+the grace period. For very slow targets (network drives) increase the value.
+
+### What is ignored
+
+Excluded by default: `.git`, `node_modules`, `.DS_Store`, `.Spotlight-V100`, `.Trashes`,
+`.fseventsd`, AppleDouble leftovers (`._name`, created when copying onto exFAT and SMB
+volumes), iCloud placeholders (`*.icloud`), atomic-save directories (`.sb-*`) as well as
+`*~`, `*.swp`, `*.tmp`, `*.crdownload`, `*.part` and vim's `4913`.
+
+Deliberately **not** all dotfiles across the board — otherwise `.htaccess`, `.env` or
+`.well-known` would drop out too.
+
+### iCloud Drive
+
+If the source lives in iCloud Drive, files can be "evicted": visible in the Finder, but
+only a placeholder locally. Read access then triggers a download and may hang or fail. The
+`.icloud` placeholders themselves are ignored. For a watcher, iCloud Drive is fundamentally
+a poor choice as a source — better use a normal local path.
+
+### Metadata
+
+`fs.cp` copies content and mode, but no extended attributes, Finder tags or resource forks.
+If you need those — say when mirroring design files or signed bundles — `ditto` is the more
+appropriate tool:
+
+```bash
+ditto --rsrc --extattr source target
+```
+
+For build artifacts, code and assets it makes no difference.
+
+### Autostart without admin rights
+
+A LaunchAgent in `~/Library/LaunchAgents` runs in the user context and needs no `sudo` —
+unlike `/Library/LaunchDaemons`. A template lives at `examples/local.copy-watch.plist`;
+adjust the paths, then:
+
+```bash
+cp examples/local.copy-watch.plist ~/Library/LaunchAgents/
+launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/local.copy-watch.plist
+
+launchctl print gui/$(id -u)/local.copy-watch      # status
+launchctl bootout gui/$(id -u)/local.copy-watch    # stop
+```
+
+Two pitfalls: `ProgramArguments` needs absolute paths, because launchd knows nothing about
+your login shell's `PATH` (`which node` gives you the right Node path; with nvm it points at
+the specific version). And launchd doesn't inherit your shell's `ulimit` — that's what
+`SoftResourceLimits` in the template is for.
+
+---
+
+## When this isn't worth it
+
+If all you want is to mirror files from A to B and nothing else, `rsync` has been doing that
+more reliably for decades:
+
+```bash
+rsync -a --delete ./dist/ ~/Sites/preview/
+```
+
+macOS ships a very old rsync version, but for this purpose it's good enough. Combined with
+`fswatch` (via Homebrew, installable without admin rights) you get the same result in two
+lines of shell.
+
+copy-watch pays off as soon as something should happen per file: purging a cache, triggering
+a reload, transforming, kicking off a deploy. That's what `onEvent` is for.
+
+---
+
+## Tests
+
+```bash
+npm run smoke
+```
+
+Creates a temporary pair of directories and checks creation, modification, nested folders,
+ignore patterns, umlauts in file names, atomic saves and deletion.
+
+## License
 
 MIT
