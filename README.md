@@ -121,7 +121,7 @@ import { createCopyWatcher } from 'copy-watch';
 
 const watcher = createCopyWatcher({
   src: './dist',
-  dest: '/Users/jochen/Sites/preview',
+  dest: '/Users/joerg/Sites/preview',
   initial: true,
   delete: true,
   ignore: [/\.map$/],
@@ -408,7 +408,7 @@ import { createCopyWatcher } from 'copy-watch';
 
 const watcher = createCopyWatcher({
   src: './dist',
-  dest: '/Users/jochen/Sites/preview',
+  dest: '/Users/joerg/Sites/preview',
   initial: true,
   delete: true,
   ignore: [/\.map$/],
